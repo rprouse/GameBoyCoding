@@ -1,7 +1,9 @@
 ; Game Boy Coding Adventure - First Program
-; rgbasm -Werror -Weverything -Hl -o first.o first.asm
-; rgblink --dmg --tiny -o first.gb first.o
-; rgbfix --title first --pad-value 0 --validate first.gb
+;
+; Compile: rgbasm -Werror -Weverything -Hl -o first.o first.asm
+;    Link: rgblink --dmg --tiny -o first.gb first.o
+;     Fix: rgbfix --title first --pad-value 0 --validate --non-japanese first.gb
+;   Debug: bgb64 --watch --rom first.gb
 
 def ROM_HEADER_ADDRESS    equ $0100
 def ROM_MAIN_ADDRESS      equ $0150

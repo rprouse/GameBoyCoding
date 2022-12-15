@@ -1,2 +1,5 @@
 *.o
 *.gb
+*.map
+*.sym
+**/bin

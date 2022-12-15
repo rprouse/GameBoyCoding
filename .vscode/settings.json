@@ -1,0 +1,6 @@
+{
+  "files.exclude": {
+    "**/*.gb": true,
+    "**/*.o": true
+  }
+}

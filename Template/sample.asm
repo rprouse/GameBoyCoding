@@ -25,14 +25,22 @@ endm
 section "sample", rom0
 
 InitSample:
+  ; init the palette
+  ld a, %11100100
+  ld [rBGP], a
+
   LoadGraphicsDataIntoVRAM
 
-  ; Turn the LCD on
-  ld a, LCDCF_ON
+  ; Turn the LCD and background on
+  ld a, LCDCF_ON | LCDCF_BG8800 | LCDCF_BG9800 | LCDCF_BGON
   ld [rLCDC], a
   ret
 
 UpdateSample:
+  ld a, 176
+  ld [rSCX], a
+  ld a, 184
+  ld [rSCY], a
   ret
 
 export InitSample, UpdateSample

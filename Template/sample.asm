@@ -25,7 +25,7 @@ endm
 section "sample", rom0
 
 InitSample:
-  ; init the palette
+  ; Init the palette
   ld a, %11100100
   ld [rBGP], a
 
@@ -34,16 +34,30 @@ InitSample:
   ; Turn the LCD and background on
   ld a, LCDCF_ON | LCDCF_BG8800 | LCDCF_BG9800 | LCDCF_BGON
   ld [rLCDC], a
+
+  ; Enable the vblank interupt
+  ld a, IEF_VBLANK
+  ld [rIE], a
+  ei
   ret
 
 UpdateSample:
-  ld a, 176
+  ; Wait for the vBlank interupt
+  halt
+
+  ld a, [rSCX]
+  inc a
   ld [rSCX], a
-  ld a, 184
+  ld a, [rSCY]
+  inc a
   ld [rSCY], a
   ret
 
 export InitSample, UpdateSample
+
+;===============================================================================
+section "vblank_interupt", rom0[$0040]
+  reti
 
 ;===============================================================================
 section "graphic_data", rom0[GRAPHICS_DATA_ADDRESS_START]

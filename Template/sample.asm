@@ -23,35 +23,46 @@ macro LoadGraphicsDataIntoVRAM
   jr nz, .load_tile\@
 endm
 
+; set all 40 sprites off the screen to start
+macro InitSprites
+  ld c, OAM_COUNT
+  ld hl, _OAMRAM + OAMA_Y
+  ld de, sizeof_OAM_ATTRS
+.init_oam\@
+  ld [hl], 0
+  add hl, de
+  dec c
+  jr nz, .init_oam\@
+endm
+
 ;===============================================================================
 section "sample", rom0
 
 InitSample:
-  ; Init the palette
-  ld a, %11100100
-  ld [rBGP], a
-
   LoadGraphicsDataIntoVRAM
+  InitSprites
+
+  ; Init the background palette
+  copy [rBGP], %11100100
+
+  ; Set the sprite palettes
+  copy [rOBP0], %11100100
+  copy [rOBP1], %00011011
 
   ; Place the Background on the screen
-  ld a, 96
-  ld [rSCX], a
-  ld a, 64
-  ld [rSCY], a
+  copy [rSCX], 96
+  copy [rSCY], 64
 
   ; Place the Window on the screen
-  ld a, 7
-  ld [rWX], a
-  ld a, 120
-  ld [rWY], a
+  copy [rWX], 7
+  copy [rWY], 120
 
   ; Turn the LCD and background on
-  ld a, LCDCF_ON | LCDCF_WIN9C00 | LCDCF_WINON | LCDCF_BG8800 | LCDCF_BG9800 | LCDCF_BGON
+  ld a, LCDCF_ON | LCDCF_WIN9C00 | LCDCF_WINON | LCDCF_BG8800 | LCDCF_BG9800 | LCDCF_BGON | LCDCF_OBJ16 | LCDCF_OBJON
   ld [rLCDC], a
 
   ; Enable the vblank interupt
-  ld a, IEF_VBLANK
-  ld [rIE], a
+  copy [rIE], IEF_VBLANK
   ei
   ret
 
@@ -59,13 +70,24 @@ UpdateSample:
   ; Wait for the vBlank interupt
   halt
 
+  ; Set the first sprite
+def SPRITE_0_ADDRESS equ (_OAMRAM)
+  copy [SPRITE_0_ADDRESS + OAMA_X], 80
+  copy [SPRITE_0_ADDRESS + OAMA_Y], 72
+  copy [SPRITE_0_ADDRESS + OAMA_TILEID], 16
+  copy [SPRITE_0_ADDRESS + OAMA_FLAGS], OAMF_PAL0
+
+  ; Set the second sprite
+def SPRITE_1_ADDRESS equ (_OAMRAM + sizeof_OAM_ATTRS)
+  copy [SPRITE_1_ADDRESS + OAMA_X], 136
+  copy [SPRITE_1_ADDRESS + OAMA_Y], 78
+  copy [SPRITE_1_ADDRESS + OAMA_TILEID], 0
+  copy [SPRITE_1_ADDRESS + OAMA_FLAGS], OAMF_PAL0 | OAMF_XFLIP
+
+
   ; Scroll the background
-  ; ld a, [rSCX]
-  ; inc a
-  ; ld [rSCX], a
-  ; ld a, [rSCY]
-  ; inc a
-  ; ld [rSCY], a
+  ; increment [rSCX]
+  ; increment [rSCY]
   ret
 
 export InitSample, UpdateSample

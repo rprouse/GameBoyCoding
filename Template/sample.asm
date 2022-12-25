@@ -151,7 +151,7 @@ def SPRITE_1_ADDRESS equ (_OAMRAM + sizeof_OAM_ATTRS)
   .up_checked
 
   ; Window toggle
-  TestPadInput_HeldAll WRAM_PAD_INPUT, PADF_A
+  TestPadInput_Pressed WRAM_PAD_INPUT, PADF_A
   jr nz, .window_toggle_done
     ld a, [WRAM_WIN_ENABLE_FLAG]
     cpl

@@ -27,6 +27,9 @@ endm
 ; struct to hold the pad input (dpad + buttons)
 rsreset
 PAD_INPUT_CURRENT   rb 1
+PAD_INPUT_PREVIOUS  rb 1
+PAD_INPUT_PRESSED   rb 1
+PAD_INPUT_RELEASED  rb 1
 sizeof_PAD_INPUT    rb 0
 
 ; init a pad input struct at address \1
@@ -35,12 +38,21 @@ sizeof_PAD_INPUT    rb 0
 macro InitPadInput
   ld a, $FF
   ld [\1 + PAD_INPUT_CURRENT], a
+  ld [\1 + PAD_INPUT_PREVIOUS], a
+  ld [\1 + PAD_INPUT_PRESSED], a
+  ld [\1 + PAD_INPUT_RELEASED], a
 endm
 
 ; read the keypad input into a pad input struct at address \1
 ; expected to be used only once in the main loop
+; uses: (a), (b) and (c)
 ; example: UpdatePadInput _HRAM + 4
 macro UpdatePadInput
+  ; Store the previous value and also load it to (c)
+  ld a, [\1 + PAD_INPUT_CURRENT]
+  ld [\1 + PAD_INPUT_PREVIOUS], a
+  ld c, a
+
   ; Read the d-pad
   ld a, P1F_GET_DPAD
   ldh [rP1], a
@@ -62,9 +74,10 @@ macro UpdatePadInput
   ldh a, [rP1]
   ldh a, [rP1]
 
-  ; Merge the buttons' input with the high nibble of (b)
+  ; Merge the buttons' input with the high nibble of (b) and store to (b)
   and a, $0F
   or a, b
+  ld b, a
 
   ; Store the current input
   ld [\1 + PAD_INPUT_CURRENT], a
@@ -72,6 +85,18 @@ macro UpdatePadInput
   ; Disable input polling
   ld a, P1F_GET_NONE
   ldh [rP1], a
+
+  ; Compute and store the pressed buttons
+  ld a, c
+  cpl
+  or a, b
+  ld [\1 + PAD_INPUT_PRESSED], a
+
+  ; Compute and store the released buttons
+  ld a, b
+  cpl
+  or a, c
+  ld [\1 + PAD_INPUT_RELEASED], a
 endm
 
 ; Raise the zero flag if all keys in \2 are held in the pad input struct \1
@@ -79,6 +104,20 @@ endm
 macro TestPadInput_HeldAll
   ld a, [\1 + PAD_INPUT_CURRENT]
   and a, \2
+endm
+
+; raise the zero flag if input \2 is pressed in the pad input struct \1
+; example: TestPadInput_Pressed _HRAM + 12, PADF_LEFT
+macro TestPadInput_Pressed
+	ld a, [\1 + PAD_INPUT_PRESSED]
+	and a, \2
+endm
+
+; raise the zero flag if input \2 is released in the pad input struct \1
+; example: TestPadInput_Released _RAM + 24, PADF_A
+macro TestPadInput_Released
+	ld a, [\1 + PAD_INPUT_RELEASED]
+	and a, \2
 endm
 
 endc

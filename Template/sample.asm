@@ -36,9 +36,35 @@ macro InitSprites
 endm
 
 ;===============================================================================
+
+rsset _RAM
+
+; Input struct
+WRAM_PAD_INPUT        rb sizeof_PAD_INPUT
+
+; Background scrolling
+WRAM_BG_SCX           rb 1
+WRAM_BG_SCY           rb 1
+
+; Window control
+WRAM_WIN_ENABLE_FLAG  rb 1
+
+WRAM_END              rb 0
+
+def WRAM_USAGE        equ (WRAM_END - _RAM)
+println "WRAM usage: {d:WRAM_USAGE} bytes"
+assert WRAM_USAGE <= $2000, "WRAM space exceeded"
+
+;===============================================================================
 section "sample", rom0
 
 InitSample:
+  ; Init the WRAM state
+  InitPadInput WRAM_PAD_INPUT
+  copy [WRAM_WIN_ENABLE_FLAG], LCDCF_WINON
+  copy [WRAM_BG_SCX], 96
+  copy [WRAM_BG_SCY], 64
+
   LoadGraphicsDataIntoVRAM
   InitSprites
 
@@ -48,10 +74,6 @@ InitSample:
   ; Set the sprite palettes
   copy [rOBP0], %11100100
   copy [rOBP1], %00011011
-
-  ; Place the Background on the screen
-  copy [rSCX], 96
-  copy [rSCY], 64
 
   ; Place the Window on the screen
   copy [rWX], 7
@@ -84,10 +106,59 @@ def SPRITE_1_ADDRESS equ (_OAMRAM + sizeof_OAM_ATTRS)
   copy [SPRITE_1_ADDRESS + OAMA_TILEID], 0
   copy [SPRITE_1_ADDRESS + OAMA_FLAGS], OAMF_PAL0 | OAMF_XFLIP
 
+  ; Set the background position
+  copy [rSCX], [WRAM_BG_SCX]
+  copy [rSCY], [WRAM_BG_SCY]
 
-  ; Scroll the background
-  ; increment [rSCX]
-  ; increment [rSCY]
+  ; Toggle the windown on/off
+  ldh a, [rLCDC]
+  and a, ~LCDCF_WINON
+  ld hl, WRAM_WIN_ENABLE_FLAG
+  or a, [hl]
+  ldh [rLCDC], a
+
+  ; We are getting all the VBlank critical code done as early as possible
+  ; then move on to the game logic code
+
+  ;=========================
+  ; Check input
+  ;=========================
+  UpdatePadInput WRAM_PAD_INPUT
+
+  ; dpad check
+  TestPadInput_HeldAll WRAM_PAD_INPUT, PADF_LEFT
+  jr nz, .left_checked
+    ld hl, WRAM_BG_SCX
+    dec [hl]
+  .left_checked
+
+  TestPadInput_HeldAll WRAM_PAD_INPUT, PADF_RIGHT
+  jr nz, .right_checked
+    ld hl, WRAM_BG_SCX
+    inc [hl]
+  .right_checked
+
+  TestPadInput_HeldAll WRAM_PAD_INPUT, PADF_DOWN
+  jr nz, .down_checked
+    ld hl, WRAM_BG_SCY
+    inc [hl]
+  .down_checked
+
+  TestPadInput_HeldAll WRAM_PAD_INPUT, PADF_UP
+  jr nz, .up_checked
+    ld hl, WRAM_BG_SCY
+    dec [hl]
+  .up_checked
+
+  ; Window toggle
+  TestPadInput_HeldAll WRAM_PAD_INPUT, PADF_A
+  jr nz, .window_toggle_done
+    ld a, [WRAM_WIN_ENABLE_FLAG]
+    cpl
+    and a, LCDCF_WINON
+    ld [WRAM_WIN_ENABLE_FLAG], a
+  .window_toggle_done
+
   ret
 
 export InitSample, UpdateSample

@@ -39,6 +39,9 @@ endm
 
 rsset _RAM
 
+; Set if the current interupt is VBLANK
+WRAM_IS_VBLANK        rb 1
+
 ; Input struct
 WRAM_PAD_INPUT        rb sizeof_PAD_INPUT
 
@@ -64,6 +67,7 @@ InitSample:
   copy [WRAM_WIN_ENABLE_FLAG], LCDCF_WINON
   copy [WRAM_BG_SCX], 96
   copy [WRAM_BG_SCY], 64
+  copy [WRAM_IS_VBLANK], 0
 
   LoadGraphicsDataIntoVRAM
   InitSprites
@@ -90,7 +94,13 @@ InitSample:
 
 UpdateSample:
   ; Wait for the vBlank interupt
-  halt
+  ld hl, WRAM_IS_VBLANK
+  xor a
+  .wait_vblank
+    halt                  ; Wait for an interupt
+    cp a, [hl]            ; Was the interupt VBLANK?
+    jr z, .wait_vblank
+    ld [hl], a            ; Reset WRAM_IS_VBLANK
 
   ; Set the first sprite
 def SPRITE_0_ADDRESS equ (_OAMRAM)
@@ -165,6 +175,10 @@ export InitSample, UpdateSample
 
 ;===============================================================================
 section "vblank_interupt", rom0[$0040]
+  push af
+  ld a, 1
+  ld [WRAM_IS_VBLANK], a
+  pop af
   reti
 
 ;===============================================================================
